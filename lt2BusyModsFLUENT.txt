@@ -4,10 +4,14 @@ _G.speed = 60
 _G.fly = false
 _G.weld = false
 _G.fov120 = false
+_G.walkSpeed = 16
+_G.jumpPower = 50
+_G.fullBright = false
 
 local p = game:GetService("Players").LocalPlayer
 local run = game:GetService("RunService")
 local uis = game:GetService("UserInputService")
+local lighting = game:GetService("Lighting")
 local cam = workspace.CurrentCamera
 local welds, parts = {}, {}
 
@@ -25,7 +29,7 @@ local Window = Fluent:CreateWindow({
 	Title = "Kxynos",
 	SubTitle = "Lumber Tycoon 2",
 	TabWidth = 160,
-	Size = UDim2.fromOffset(580, 460),
+	Size = UDim2.fromOffset(580, 520),
 	Acrylic = false,
 	Theme = "Dark",
 	MinimizeKey = Enum.KeyCode.LeftControl
@@ -69,6 +73,8 @@ end
 
 local Tab = Window:AddTab({ Title = "Home", Icon = "home" })
 
+local TimeLabel = Tab:AddParagraph({ Title = "Time Status", Content = "00:00" })
+
 Tab:AddToggle("FlyToggle", {
 	Title = "car fly",
 	Default = _G.fly,
@@ -89,6 +95,42 @@ Tab:AddSlider("SpeedSlider", {
 	Rounding = 0,
 	Callback = function(Value)
 		_G.speed = Value
+	end
+})
+
+Tab:AddSlider("WalkSpeedSlider", {
+	Title = "WalkSpeed",
+	Min = 16,
+	Max = 50,
+	Default = _G.walkSpeed,
+	Rounding = 0,
+	Callback = function(Value)
+		_G.walkSpeed = Value
+	end
+})
+
+Tab:AddSlider("JumpPowerSlider", {
+	Title = "JumpPower",
+	Min = 50,
+	Max = 90,
+	Default = _G.jumpPower,
+	Rounding = 0,
+	Callback = function(Value)
+		_G.jumpPower = Value
+	end
+})
+
+Tab:AddToggle("FullBrightToggle", {
+	Title = "FullBright",
+	Default = _G.fullBright,
+	Callback = function(Value)
+		_G.fullBright = Value
+		if not _G.fullBright then
+			lighting.Brightness = 1
+			lighting.ClockTime = 12
+			lighting.FogEnd = 100000
+			lighting.GlobalShadows = true
+		end
 	end
 })
 
@@ -143,9 +185,41 @@ Tab:AddToggle("FovToggle", {
 })
 
 run.Heartbeat:Connect(function()
+	local currentTime = lighting.ClockTime
+	if currentTime >= 6 and currentTime < 18 then
+		local timeLeft = 18 - currentTime
+		TimeLabel:SetTitle(string.format("Day:%.2f", timeLeft))
+	else
+		local timeLeft
+		if currentTime >= 18 then
+			timeLeft = (24 - currentTime) + 6
+		else
+			timeLeft = 6 - currentTime
+		end
+		TimeLabel:SetTitle(string.format("Night:%.2f", timeLeft))
+	end
+
+	local character = p.Character
+	if character then
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.WalkSpeed = _G.walkSpeed
+			humanoid.UseJumpPower = true
+			humanoid.JumpPower = _G.jumpPower
+		end
+	end
+
+	if _G.fullBright then
+		lighting.Brightness = 2
+		lighting.ClockTime = 14
+		lighting.FogEnd = 100000
+		lighting.GlobalShadows = false
+	end
+
 	if _G.fov120 then
 		cam.FieldOfView = 120
 	end
+	
 	if _G.fly then 
 		local w = getCar()
 		if w then 
