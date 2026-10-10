@@ -1,0 +1,167 @@
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+_G.speed = 60
+_G.fly = false
+_G.weld = false
+_G.fov120 = false
+
+local p = game:GetService("Players").LocalPlayer
+local run = game:GetService("RunService")
+local uis = game:GetService("UserInputService")
+local cam = workspace.CurrentCamera
+local welds, parts = {}, {}
+
+local function getCar()
+	local c = p.Character
+	if c and c:FindFirstChild("Humanoid") then
+		local s = c.Humanoid.SeatPart
+		if s and s:IsA("VehicleSeat") then
+			return s.AssemblyRootPart, s
+		end
+	end
+end
+
+local Window = Fluent:CreateWindow({
+	Title = "Kxynos",
+	SubTitle = "Lumber Tycoon 2",
+	TabWidth = 160,
+	Size = UDim2.fromOffset(580, 460),
+	Acrylic = false,
+	Theme = "Dark",
+	MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+local fluentGui = p.PlayerGui:FindFirstChild(Window.Root.Name)
+if fluentGui and fluentGui:FindFirstChild("Main") then
+	local mainFrame = fluentGui.Main
+	mainFrame.BackgroundTransparency = 1
+	
+	if mainFrame:FindFirstChild("Background") then
+		mainFrame.Background.Visible = false
+	end
+	
+	local container = mainFrame:FindFirstChild("CanvasGroup") or mainFrame
+	local customBg = container:FindFirstChild("FluentCustomBackground")
+	
+	if not customBg then
+		customBg = Instance.new("ImageLabel")
+		customBg.Name = "FluentCustomBackground"
+		customBg.Size = UDim2.new(1, 0, 1, 0)
+		customBg.BackgroundTransparency = 1
+		customBg.Image = "rbxthumb://type=Asset&id=10082742456&w=420&h=420"
+		customBg.ScaleType = Enum.ScaleType.Stretch
+		customBg.ImageTransparency = 0.4
+		customBg.ZIndex = 1
+		customBg.Parent = container
+		
+		for _, child in ipairs(container:GetChildren()) do
+			if child ~= customBg and (child:IsA("Frame") or child:IsA("ScrollingFrame") or child:IsA("TextLabel") or child:IsA("CanvasGroup")) then
+				child.ZIndex = 2
+				for _, subChild in ipairs(child:GetDescendants()) do
+					if subChild:IsA("GuiObject") then
+						subChild.ZIndex = subChild.ZIndex + 2
+					end
+				end
+			end
+		end
+	end
+end
+
+local Tab = Window:AddTab({ Title = "Home", Icon = "home" })
+
+Tab:AddToggle("FlyToggle", {
+	Title = "car fly",
+	Default = _G.fly,
+	Callback = function(Value)
+		_G.fly = Value
+		if not _G.fly then 
+			local w = getCar()
+			if w then w.AssemblyLinearVelocity = Vector3.new(0,0,0) end 
+		end
+	end
+})
+
+Tab:AddSlider("SpeedSlider", {
+	Title = "fly speed",
+	Description = "Регулировка скорости полета машины",
+	Min = 20,
+	Max = 200,
+	Default = _G.speed,
+	Rounding = 0,
+	Callback = function(Value)
+		_G.speed = Value
+	end
+})
+
+Tab:AddToggle("MagnetToggle", {
+	Title = "item magnet",
+	Default = _G.weld,
+	Callback = function(Value)
+		_G.weld = Value
+		if _G.weld then 
+			local w, u = getCar()
+			if w and u then 
+				local x = u:FindFirstAncestorOfClass("Model")
+				if x then 
+					for _, z in ipairs(workspace:GetDescendants()) do 
+						if z:IsA("BasePart") and not z:IsDescendantOf(x) and not z:IsDescendantOf(p.Character) and not z.Anchored then 
+							if z.Mass < 50 and (z.Position - w.Position).Magnitude < 20 then 
+								local A = Instance.new("WeldConstraint")
+								A.Part0 = w
+								A.Part1 = z
+								A.Parent = w
+								table.insert(welds, A)
+								table.insert(parts, z)
+							end 
+						end 
+					end 
+				end 
+			end 
+		else 
+			for _, A in ipairs(welds) do if A and A.Parent then A:Destroy() end end
+			for _, z in ipairs(parts) do 
+				if z and z.Parent then 
+					pcall(function()
+						z.AssemblyLinearVelocity = Vector3.new(0,-1,0)
+						z.AssemblyAngularVelocity = Vector3.new(0,0,0)
+					end)
+				end 
+			end
+			welds, parts = {}, {}
+		end
+	end
+})
+
+Tab:AddToggle("FovToggle", {
+	Title = "120 fov",
+	Default = _G.fov120,
+	Callback = function(Value)
+		_G.fov120 = Value
+		if not _G.fov120 then
+			cam.FieldOfView = 70
+		end
+	end
+})
+
+run.Heartbeat:Connect(function()
+	if _G.fov120 then
+		cam.FieldOfView = 120
+	end
+	if _G.fly then 
+		local w = getCar()
+		if w then 
+			local D = workspace.CurrentCamera.CFrame
+			local E = Vector3.new(0,0,0)
+			if uis:IsKeyDown(Enum.KeyCode.W) then E = E + D.LookVector end
+			if uis:IsKeyDown(Enum.KeyCode.S) then E = E - D.LookVector end
+			if uis:IsKeyDown(Enum.KeyCode.D) then E = E + D.RightVector end
+			if uis:IsKeyDown(Enum.KeyCode.A) then E = E - D.RightVector end
+			if uis:IsKeyDown(Enum.KeyCode.Space) then E = E + Vector3.new(0,1,0) end
+			if uis:IsKeyDown(Enum.KeyCode.LeftShift) then E = E - Vector3.new(0,1,0) end
+			w.AssemblyLinearVelocity = E.Magnitude > 0 and E.Unit * _G.speed or Vector3.new(0,0,0)
+			w.AssemblyAngularVelocity = Vector3.new(0,0,0)
+		end 
+	end 
+end)
+
+Window:SelectTab(1)
