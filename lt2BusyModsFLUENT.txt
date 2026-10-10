@@ -83,7 +83,6 @@ Tab:AddToggle("FlyToggle", {
 
 Tab:AddSlider("SpeedSlider", {
 	Title = "fly speed",
-	Description = "Регулировка скорости полета машины",
 	Min = 20,
 	Max = 200,
 	Default = _G.speed,
