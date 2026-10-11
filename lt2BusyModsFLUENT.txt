@@ -2,6 +2,7 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 
 _G.speed = 60
 _G.fly = false
+_G.flyCar = false
 _G.weld = false
 _G.fov120 = false
 _G.walkSpeed = 16
@@ -14,6 +15,7 @@ local uis = game:GetService("UserInputService")
 local lighting = game:GetService("Lighting")
 local cam = workspace.CurrentCamera
 local welds, parts = {}, {}
+local bVel, bGyro
 
 local function getCar()
 	local c = p.Character
@@ -75,20 +77,28 @@ local Tab = Window:AddTab({ Title = "Home", Icon = "home" })
 
 local TimeLabel = Tab:AddParagraph({ Title = "Time Status", Content = "" })
 
-Tab:AddToggle("FlyToggle", {
-	Title = "car fly",
-	Default = _G.fly,
+Tab:AddToggle("FlyCarToggle", {
+	Title = "Fly Car",
+	Default = _G.flyCar,
 	Callback = function(Value)
-		_G.fly = Value
-		if not _G.fly then 
+		_G.flyCar = Value
+		if not _G.flyCar then 
 			local w = getCar()
 			if w then w.AssemblyLinearVelocity = Vector3.new(0,0,0) end 
 		end
 	end
 })
 
+Tab:AddToggle("FlyToggle", {
+	Title = "Fly",
+	Default = _G.fly,
+	Callback = function(Value)
+		_G.fly = Value
+	end
+})
+
 Tab:AddSlider("SpeedSlider", {
-	Title = "fly speed",
+	Title = "Fly Speed",
 	Min = 20,
 	Max = 200,
 	Default = _G.speed,
@@ -206,6 +216,66 @@ run.Heartbeat:Connect(function()
 			humanoid.UseJumpPower = true
 			humanoid.JumpPower = _G.jumpPower
 		end
+		
+		local rootPart = character:FindFirstChild("HumanoidRootPart")
+		if rootPart then
+			if _G.flyCar then
+				local w = getCar()
+				if w then 
+					local D = workspace.CurrentCamera.CFrame
+					local E = Vector3.new(0,0,0)
+					if uis:IsKeyDown(Enum.KeyCode.W) then E = E + D.LookVector end
+					if uis:IsKeyDown(Enum.KeyCode.S) then E = E - D.LookVector end
+					if uis:IsKeyDown(Enum.KeyCode.D) then E = E + D.RightVector end
+					if uis:IsKeyDown(Enum.KeyCode.A) then E = E - D.RightVector end
+					if uis:IsKeyDown(Enum.KeyCode.Space) then E = E + Vector3.new(0,1,0) end
+					if uis:IsKeyDown(Enum.KeyCode.LeftShift) then E = E - Vector3.new(0,1,0) end
+					w.AssemblyLinearVelocity = E.Magnitude > 0 and E.Unit * _G.speed or Vector3.new(0,0,0)
+					w.AssemblyAngularVelocity = Vector3.new(0,0,0)
+				end
+			elseif _G.fly then
+				if humanoid and humanoid:GetState() ~= Enum.HumanoidStateType.Physics then 
+					humanoid:ChangeState(Enum.HumanoidStateType.Physics) 
+				end
+
+				if not bVel then
+					bVel = Instance.new("BodyVelocity")
+					bVel.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+					bVel.Parent = rootPart
+				end
+				if not bGyro then
+					bGyro = Instance.new("BodyGyro")
+					bGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+					bGyro.CFrame = rootPart.CFrame
+					bGyro.Parent = rootPart
+				end
+
+				local direction = Vector3.new(0, 0, 0)
+				local cameraCFrame = cam.CFrame
+				
+				if uis:IsKeyDown(Enum.KeyCode.W) then direction = direction + cameraCFrame.LookVector end
+				if uis:IsKeyDown(Enum.KeyCode.S) then direction = direction - cameraCFrame.LookVector end
+				if uis:IsKeyDown(Enum.KeyCode.D) then direction = direction + cameraCFrame.RightVector end
+				if uis:IsKeyDown(Enum.KeyCode.A) then direction = direction - cameraCFrame.RightVector end
+				if uis:IsKeyDown(Enum.KeyCode.Space) then direction = direction + Vector3.new(0, 1, 0) end
+				if uis:IsKeyDown(Enum.KeyCode.LeftShift) then direction = direction - Vector3.new(0, 1, 0) end
+
+				bGyro.CFrame = cameraCFrame
+
+				if direction.Magnitude > 0 then
+					bVel.Velocity = direction.Unit * _G.speed
+				else
+					bVel.Velocity = Vector3.new(0, 0, 0)
+				end
+			else
+				if bVel then bVel:Destroy() bVel = nil end
+				if bGyro then bGyro:Destroy() bGyro = nil end
+				
+				if humanoid and humanoid:GetState() == Enum.HumanoidStateType.Physics then
+					humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+				end
+			end
+		end
 	end
 
 	if _G.fullBright then
@@ -217,22 +287,6 @@ run.Heartbeat:Connect(function()
 	if _G.fov120 then
 		cam.FieldOfView = 120
 	end
-	
-	if _G.fly then 
-		local w = getCar()
-		if w then 
-			local D = workspace.CurrentCamera.CFrame
-			local E = Vector3.new(0,0,0)
-			if uis:IsKeyDown(Enum.KeyCode.W) then E = E + D.LookVector end
-			if uis:IsKeyDown(Enum.KeyCode.S) then E = E - D.LookVector end
-			if uis:IsKeyDown(Enum.KeyCode.D) then E = E + D.RightVector end
-			if uis:IsKeyDown(Enum.KeyCode.A) then E = E - D.RightVector end
-			if uis:IsKeyDown(Enum.KeyCode.Space) then E = E + Vector3.new(0,1,0) end
-			if uis:IsKeyDown(Enum.KeyCode.LeftShift) then E = E - Vector3.new(0,1,0) end
-			w.AssemblyLinearVelocity = E.Magnitude > 0 and E.Unit * _G.speed or Vector3.new(0,0,0)
-			w.AssemblyAngularVelocity = Vector3.new(0,0,0)
-		end 
-	end 
 end)
 
 Window:SelectTab(1)
