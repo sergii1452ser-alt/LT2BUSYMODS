@@ -8,6 +8,7 @@ _G.fov120 = false
 _G.walkSpeed = 16
 _G.jumpPower = 50
 _G.fullBright = false
+_G.infJump = false
 
 local p = game:GetService("Players").LocalPlayer
 local run = game:GetService("RunService")
@@ -76,6 +77,33 @@ end
 local Tab = Window:AddTab({ Title = "Home", Icon = "home" })
 
 local TimeLabel = Tab:AddParagraph({ Title = "Time Status", Content = "" })
+
+local InfJumpToggle = Tab:AddToggle("InfJumpToggle", {
+	Title = "Infinite Jump",
+	Default = _G.infJump,
+	Callback = function(Value)
+		_G.infJump = Value
+	end
+})
+
+local InfJumpKeybind = Tab:AddKeybind("InfJumpKeybind", {
+	Title = "Infinite Jump Hotkey",
+	Mode = "Toggle",
+	Default = "E",
+	Callback = function()
+	end
+})
+
+uis.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if InfJumpKeybind.Value then
+		local currentKey = Enum.KeyCode[InfJumpKeybind.Value]
+		if currentKey and input.KeyCode == currentKey then
+			_G.infJump = not _G.infJump
+			InfJumpToggle:SetValue(_G.infJump)
+		end
+	end
+end)
 
 Tab:AddToggle("FlyCarToggle", {
 	Title = "Fly Car",
@@ -192,6 +220,18 @@ Tab:AddToggle("FovToggle", {
 		end
 	end
 })
+
+uis.JumpRequest:Connect(function()
+	if _G.infJump then
+		local character = p.Character
+		if character then
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+			end
+		end
+	end
+end)
 
 run.Heartbeat:Connect(function()
 	local currentTime = lighting.ClockTime
